@@ -9,6 +9,7 @@ from typing import Callable
 from typing import Literal
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import TextIO
 from typing import TYPE_CHECKING
 from typing import Union
@@ -76,10 +77,27 @@ IncludeObjectFn = Callable[
     bool,
 ]
 
-OnVersionApplyFn = Callable[
-    [MigrationContext, "MigrationInfo", Collection[Any], Mapping[str, Any]],
-    None,
-]
+
+class OnVersionApplyFn(Protocol):
+    """A callable that is invoked for each migration step applied.
+
+    The callable is invoked with keyword arguments only: ``ctx``, the
+    :class:`.MigrationContext` running the migration; ``step``, the
+    :class:`.MigrationInfo` for the step being applied; ``heads``, a
+    collection of the current head version strings; and ``run_args``, the
+    ``**kwargs`` passed to :meth:`.MigrationContext.run_migrations`.
+
+    """
+
+    def __call__(
+        self,
+        *,
+        ctx: MigrationContext,
+        step: MigrationInfo,
+        heads: Collection[Any],
+        run_args: Mapping[str, Any],
+    ) -> None: ...
+
 
 CompareServerDefault = Callable[
     [
