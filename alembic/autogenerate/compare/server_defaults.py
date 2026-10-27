@@ -185,6 +185,15 @@ def _user_compare_server_default(
     migration_context = autogen_context.migration_context
 
     if migration_context._user_compare_server_default is False:
+        # the compare_server_default option gates only the comparison of
+        # plain server defaults.  Identity and Computed defaults are
+        # compared unconditionally, as they were through version 1.17
+        if sqla_compat._server_default_is_computed(
+            metadata_default, conn_col_default
+        ) or sqla_compat._server_default_is_identity(
+            metadata_default, conn_col_default
+        ):
+            return PriorityDispatchResult.CONTINUE
         return PriorityDispatchResult.STOP
 
     if not callable(migration_context._user_compare_server_default):
