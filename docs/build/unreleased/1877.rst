@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, autogenerate
+    :tickets: 1877
+
+    Fixed regression where autogenerate no longer detected changes to
+    :class:`~sqlalchemy.schema.Identity` or
+    :class:`~sqlalchemy.schema.Computed` column defaults, and no longer
+    emitted the "Computed default cannot be modified" warning, unless
+    ``compare_server_default`` were set.  Identity and computed comparison
+    are once again performed independently of that option, as they were
+    through the 1.17 series.
