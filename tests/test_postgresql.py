@@ -2129,3 +2129,93 @@ class PGComputedAutogenerateTest(AutogenFixtureTest, TestBase):
             mock_warn.mock_calls,
             [mock.call("Computed default on user.foo cannot be modified")],
         )
+
+
+class PGIdentityComputedNoCompareServerDefaultTest(
+    AutogenFixtureTest, TestBase
+):
+    """test #1877: Identity and Computed comparison must not be gated by
+    the compare_server_default option"""
+
+    __requires__ = ("identity_columns", "computed_columns")
+    __only_on__ = "postgresql"
+    __backend__ = True
+
+    def _table(self, metadata, *n_args):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("bar", Integer),
+            Column("n", Integer, *n_args, nullable=False),
+        )
+
+    def _diff_for(self, in_database, in_model, **opts):
+        m1 = MetaData()
+        m2 = MetaData()
+        self._table(m1, *in_database)
+        self._table(m2, *in_model)
+        return self._fixture(m1, m2, opts=opts)
+
+    @combinations(
+        ("add Identity", (), (Identity(),)),
+        ("remove Identity", (Identity(),), ()),
+        (
+            "change Identity",
+            (Identity(increment=1),),
+            (Identity(increment=5),),
+        ),
+        id_="sss",
+        argnames="label,in_database,in_model",
+    )
+    def test_identity_diff_without_compare_server_default(
+        self, label, in_database, in_model
+    ):
+        diffs = self._diff_for(
+            in_database, in_model, compare_server_default=False
+        )
+        eq_(len(diffs), 1)
+        eq_(diffs[0][0][0], "modify_default")
+
+    def test_identity_diff_with_compare_server_default(self):
+        # control: comparison enabled, diff is detected as before
+        diffs = self._diff_for(
+            (Identity(increment=1),),
+            (Identity(increment=5),),
+            compare_server_default=True,
+        )
+        eq_(len(diffs), 1)
+        eq_(diffs[0][0][0], "modify_default")
+
+    def test_computed_warn_without_compare_server_default(self):
+        with mock.patch("alembic.util.warn") as mock_warn:
+            diffs = self._diff_for(
+                (Computed("bar * 5", persisted=True),),
+                (Computed("bar * 42", persisted=True),),
+                compare_server_default=False,
+            )
+        eq_(list(diffs), [])
+        eq_(
+            mock_warn.mock_calls,
+            [mock.call("Computed default on t.n cannot be modified")],
+        )
+
+    def test_plain_default_still_gated(self):
+        # control: compare_server_default=False still gates comparison of
+        # plain server defaults
+        m1 = MetaData()
+        Table(
+            "t",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("n", Integer, server_default="5", nullable=False),
+        )
+        m2 = MetaData()
+        Table(
+            "t",
+            m2,
+            Column("id", Integer, primary_key=True),
+            Column("n", Integer, server_default="7", nullable=False),
+        )
+        diffs = self._fixture(m1, m2, opts={"compare_server_default": False})
+        eq_(list(diffs), [])
