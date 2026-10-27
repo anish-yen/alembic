@@ -338,4 +338,4 @@ def setup(plugin: Plugin) -> None:
         "column",
         "server_default",
         priority=DispatchPriority.LAST,
-    
+    )
