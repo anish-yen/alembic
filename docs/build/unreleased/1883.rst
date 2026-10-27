@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 1883
+
+    Fixed the type annotation for the
+    :paramref:`.EnvironmentContext.configure.on_version_apply` callback,
+    which was declared as a positional ``Callable`` even though the
+    callback is invoked with keyword arguments only, as documented.
+    The annotation is now a :class:`typing.Protocol` with keyword-only
+    parameters ``ctx``, ``step``, ``heads`` and ``run_args``, so
+    type checkers accept callbacks that match the actual invocation
+    and reject callbacks whose parameter names would fail at runtime.
